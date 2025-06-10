@@ -5,7 +5,6 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import org.example.routing.module
 
-
 fun main() {
     embeddedServer(
         Netty,
