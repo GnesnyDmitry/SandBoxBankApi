@@ -1,4 +1,4 @@
-package org.example
+package org.example.models
 
 data class AuthUserData(
     val accessToken: String?,
