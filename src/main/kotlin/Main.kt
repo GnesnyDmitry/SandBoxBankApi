@@ -15,6 +15,7 @@ fun Application.module() {
         get("/hello") {
             call.respondText("Hello, Ktor!")
         }
+        createGame()
     }
 }
 
