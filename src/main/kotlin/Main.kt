@@ -11,4 +11,5 @@ fun main() {
         port = 8080,
         module = Application::module
     ).start(wait = true)
+
 }
