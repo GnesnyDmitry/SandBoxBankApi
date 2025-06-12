@@ -1,8 +1,10 @@
 package org.example.service
 
 import org.example.generateToken
+import org.example.models.BaseProduct
 import org.example.models.Card
 import org.example.models.Product
+import org.example.models.TransactionRequest
 import org.example.models.User
 
 sealed class RegisterResult {
@@ -45,6 +47,13 @@ sealed interface GetProductsResult {
     object InCorrectAccessToken : GetProductsResult
 }
 
+sealed class SkyTopUpResult {
+    object InvalidAccessToken : SkyTopUpResult()
+    object TransactionNumberTooLow : SkyTopUpResult()
+    object TransactionAlreadyExists : SkyTopUpResult()
+    data class Success(val transactionNumber: Long) : SkyTopUpResult()
+}
+
 sealed class DepositResult {
     data class Success(
         val product: Product,
@@ -55,6 +64,15 @@ sealed class DepositResult {
     object InCorrectAccessToken : DepositResult()
     object InCorrectDepositNumber : DepositResult()
     object IsDepositExist : DepositResult()
+}
+
+sealed interface TransactionResult {
+    data class Success(val transactionNumber: Long) : TransactionResult
+    object InvalidToken : TransactionResult
+    object InsufficientFunds : TransactionResult
+    object InvalidTransactionNumber : TransactionResult
+    object AlreadyProcessed : TransactionResult
+    object ProductNotFound : TransactionResult
 }
 
 sealed class CreateCreditResult {
@@ -73,6 +91,7 @@ class UserService {
     private val creditCardsByUser = mutableMapOf<String, MutableList<Card>>()
     private val depositsByUser = mutableMapOf<String, MutableList<Product>>()
     private val creditsByUser = mutableMapOf<String, MutableList<Product>>()
+    val transactionsByUser = mutableMapOf<String, MutableList<Long>>()
     private var productIdCounter = 1L
     private var userIdCounter = 1L
 
@@ -289,6 +308,81 @@ class UserService {
         val credits = creditsByUser[user.email] ?: emptyList()
 
         return GetProductsResult.Success(products = deposits + credits)
+    }
+
+    fun makeTransaction(
+        userId: Long,
+        accessToken: String,
+        request: TransactionRequest
+    ): TransactionResult {
+        val user = users.find { it.userId == userId && it.accessToken == accessToken }
+            ?: return TransactionResult.InvalidToken
+
+        val email = user.email
+
+        val previousTransactions = transactionsByUser.getOrPut(email) { mutableListOf() }
+
+        if (previousTransactions.contains(request.transactionNumber)) {
+            return TransactionResult.InvalidTransactionNumber
+        }
+
+        if (previousTransactions.any { it >= request.transactionNumber }) {
+            return TransactionResult.InvalidTransactionNumber
+        }
+
+        val from = findProduct(email, request.fromType, request.fromId)
+        val to = findProduct(email, request.toType, request.toId)
+
+        if (from == null || to == null || from.balance < request.value) {
+            return TransactionResult.ProductNotFound
+        }
+
+        if (to.type == "product_credit" && to.balance <= 0) {
+            return TransactionResult.InsufficientFunds
+        }
+
+        from.balance -= request.value
+        to.balance += request.value
+        previousTransactions.add(request.transactionNumber)
+
+        return TransactionResult.Success(request.transactionNumber)
+    }
+
+    fun findProduct(email: String, type: String, id: Long): BaseProduct? {
+        val allProducts: List<BaseProduct> = (depositsByUser[email] ?: emptyList()) +
+                (creditsByUser[email] ?: emptyList()) +
+                (debitCardsByUser[email] ?: emptyList()) +
+                (creditCardsByUser[email] ?: emptyList())
+        return allProducts.find { it.id == id && it.type == type }
+    }
+
+    fun skyTopUp(
+        toId: Long,
+        toType: String,
+        value: Long,
+        transactionNumber: Long,
+        accessToken: String
+    ): SkyTopUpResult {
+        val user = users.find { it.accessToken == accessToken } ?: return SkyTopUpResult.InvalidAccessToken
+        val email = user.email
+
+        val userTransactions = transactionsByUser.getOrPut(email) { mutableListOf() }
+
+        if (userTransactions.any { it >= transactionNumber }) {
+            return if (userTransactions.contains(transactionNumber)) {
+                SkyTopUpResult.TransactionAlreadyExists
+            } else {
+                SkyTopUpResult.TransactionNumberTooLow
+            }
+        }
+        val to = findProduct(email, toType, toId)
+            ?: return SkyTopUpResult.TransactionNumberTooLow
+
+        to.balance += value
+
+        userTransactions.add(transactionNumber)
+
+        return SkyTopUpResult.Success(transactionNumber)
     }
 
     private fun isEmailValid(email: String): Boolean {

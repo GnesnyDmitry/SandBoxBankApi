@@ -4,11 +4,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Card(
-    val id: Long,
+    override val id: Long,
     val cvv: Int,
     val endDate: String,
     val owner: String,
-    val type: String,
+    override val type: String,
     val percent: Double,
-    val balance: Int
-)
+    override var balance: Long
+) : BaseProduct

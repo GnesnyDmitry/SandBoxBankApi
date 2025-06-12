@@ -29,5 +29,9 @@ fun Application.module() {
         creditProductRoutes(userService)
 
         productsRoutes(userService)
+
+        transactionRoute(userService)
+
+        skyTopUpRoutes(userService)
     }
 }

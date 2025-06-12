@@ -14,13 +14,13 @@ fun Routing.allCardsRoute(userService: UserService) {
         val token = authHeader?.removePrefix("Bearer ")?.trim()
 
         if (token == null) {
-            call.respond(HttpStatusCode.Forbidden, "Missing or invalid Authorization header")
+            call.respond(HttpStatusCode.Forbidden, "Отсутствует или некорректный заголовок Authorization")
             return@get
         }
 
         val userId = call.request.queryParameters["user_id"]?.toLongOrNull()
         if (userId == null) {
-            call.respond(HttpStatusCode.BadRequest, "Missing or invalid user_id")
+            call.respond(HttpStatusCode.BadRequest, "Нету такого userId")
             return@get
         }
 

@@ -4,10 +4,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Product(
-    val id: Long,
-    val type: String,
+    override val id: Long,
+    override val type: String,
     val percentType: Long,
     val period: Long,
     val percent: Int,
-    val balance: Long
-)
+    override var balance: Long
+) : BaseProduct
