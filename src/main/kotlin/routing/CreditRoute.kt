@@ -15,7 +15,7 @@ fun Routing.creditProductRoutes(userService: UserService) {
         val authHeader = call.request.headers["Authorization"]
         val token = authHeader?.removePrefix("Bearer ")?.trim()
         if (token == null) {
-            call.respond(HttpStatusCode.Forbidden, "Missing or invalid Authorization header")
+            call.respond(HttpStatusCode.Forbidden, "Отсутствует или некорректный заголовок Authorization")
             return@post
         }
 
